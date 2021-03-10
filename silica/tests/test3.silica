@@ -1,0 +1,10 @@
+use printByte(x)
+use pow(x,y)
+
+func getNum(x):
+	let a = pow(2,x)
+	return a
+
+func entry():
+	let x = getNum(2)
+	return x

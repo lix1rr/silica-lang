@@ -1,0 +1,9 @@
+use log10(a)
+use log  ( a )
+
+use pow (   a, B)
+
+func blocks():
+	let x = 3 + log(256)* log10(100)
+	let y = x/2 +47 + 2*3**2   +log(16)/2 +x*2
+	print if (x > y) x else y
