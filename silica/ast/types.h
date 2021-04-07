@@ -2,8 +2,10 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 #include <numeric>
 #include <algorithm>
+#include <array>
 
 namespace Silica {
 struct Type {
@@ -57,25 +59,27 @@ struct Float: public Type {
 
 namespace Types {
 	using namespace std::literals;
-	inline const Integer Int64  {true,  8, "Int64"sv};
-	inline const Integer Int32  {true,  4, "Int32"sv};
-	inline const Integer Int16  {true,  2, "Int16"sv};
-	inline const Integer Int8   {true,  1, "Int8"sv};
+	extern const Integer Int64;
+	extern const Integer Int32;
+	extern const Integer Int16;
+	extern const Integer Int8;
 
-	inline const Integer UInt64 {false, 8, "UInt64"sv};
-	inline const Integer UInt32 {false, 4, "UInt32"sv};
-	inline const Integer UInt16 {false, 2, "UInt16"sv};
-	inline const Integer UInt8  {false, 1, "UInt8"sv};
+	extern const Integer UInt64;
+	extern const Integer UInt32;
+	extern const Integer UInt16;
+	extern const Integer UInt8;
 
-	// used to ref a UTF-N element
-	inline const Integer Char32 {false, 4, "Char32"sv};
-	inline const Integer Char16 {false, 2, "Char16"sv};
-	inline const Integer Char8  {false, 1, "Char8"sv};
+			// used to ref a UTF-N element
+	extern const Integer Char32;
+	extern const Integer Char16;
+	extern const Integer Char8;
 
-	inline const Float   Float32 { 4, "Float32"sv};
-	inline const Float   Float64 { 8, "Float64"sv};
+	extern const Float   Float32;
+	extern const Float   Float64;
 
-	inline const Type    Void;
+	extern const Type    Void;
+
+	extern const std::array<const Type*, 14> all;
 };
 
 struct Tuple : public Type {

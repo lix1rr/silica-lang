@@ -46,6 +46,7 @@ namespace Silica {
 		int errorCount = 0;
 		std::string errors;
 		Ast ast;
+		std::vector<std::unique_ptr<Type>> types;
 		Parser(std::istream& stream, std::string_view moduleName, std::string_view sourceName):
 			stream(stream) {
 			next();
@@ -76,7 +77,6 @@ namespace Silica {
 		char current = 0;
 		int line = 1;
 		int byte = 0;
-		int tabs = 0;
 
 		bool next();
 		void nextToken(bool inclNewline);
@@ -87,21 +87,24 @@ namespace Silica {
 		void err(std::string msg, int fmtByte);
 		void note(std::string msg, int fmtByte);
 		void err(std::string msg) {
-			err(msg, byte);
+			err(std::move(msg), byte);
+		}
+		void note(std::string msg) {
+			note(std::move(msg), byte);
 		}
 
-
+		const Type* handleType();
 		std::unique_ptr<Expression> parseSingleExpr();
 		std::unique_ptr<Expression> handleFuncCall(std::string name);
 		std::optional<std::pair<std::string, Extern>> parseFuncSignature();
 		void handleExtern();
-		std::unique_ptr<Let> handleLet();
+		DeclareVar* handleLet();
 		std::unique_ptr<Expression> handleIdentifier();
 		void handleFuncDecl();
 		std::unique_ptr<Expression> parseRhs(int precedence, std::unique_ptr<Expression> lhs);
 		std::unique_ptr<Expression> expectExpression(bool inBrackets = false);
 
-		std::unique_ptr<Expression> handleBlock();
+		std::unique_ptr<Block> handleBlock();
 		void parse();
 	};
 	#define expect(expectedToken, msg) getToken();if (token != expectedToken) {err(msg); return nullptr;}

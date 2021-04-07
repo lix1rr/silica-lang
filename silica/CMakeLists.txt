@@ -3,14 +3,16 @@ project(Silica)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_CXX_STANDARD 17)
 
-
-
 set(CMAKE_CXX_STANDARD_REQUIRED True)
-add_executable(SilicaJIT  "ast/ast.cpp"  "prism library/prism-lib.cpp" "parsing/Parser.cpp" "parsing/tokens.cpp"  "main.cpp"  "ast/types.h" )
+add_executable(SilicaJIT  "ast/ast.cpp"  "prism library/prism-lib.cpp" "parsing/Parser.cpp" "parsing/tokens.cpp"  "main.cpp"  "ast/types.h" "compiling/compiler.h"     "compiling/host.h" "compiling/host.cpp" "ast/types.cpp" "compiling/backend.cpp")
+
+message("Found xed kit at ${XED_KIT_DIR}")
+target_include_directories(SilicaJIT PRIVATE ${XED_KIT_DIR}/include)
+target_link_libraries(SilicaJIT PRIVATE ${XED_KIT_DIR}/lib/xed.lib ${XED_KIT_DIR}/lib/xed-ild.lib)
 
 target_compile_definitions(SilicaJIT PRIVATE PROJECT_DIR="${PROJECT_SOURCE_DIR}" TARGET_PROCESSOR="${CMAKE_SYSTEM_PROCESSOR}" TARGET_OS="${CMAKE_SYSTEM_NAME}" )
 target_include_directories(SilicaJIT PRIVATE "include")
-
+#target_link_libraries(SilicaJIT Tables)
 if(MSVC)
   target_compile_options(SilicaJIT PRIVATE /W4)
 else()

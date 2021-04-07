@@ -91,15 +91,13 @@ void UnaryOpExpr::print(std::ostream& stream, int tabs) {
 }
 
 
-void DeclareVarExpr::print(std::ostream& stream, int tabs) {
+void DeclareVar::print(std::ostream& stream, int tabs) {
 	stream
 		<< Tabs(tabs)
-		<< "DeclareVarExpr:\n"
+		<< "DeclareVar:\n"
 		<< Tabs(tabs + 1)
 		<< "name:" << name << '\n'
-		<< Tabs(tabs + 1)
-		<< "value:\n";
-	value->print(stream, tabs + 2);
+		<< Tabs(tabs + 1);
 }
 
 void SetVarExpr::print(std::ostream& stream, int tabs) {
@@ -152,9 +150,8 @@ void GetVarExpr::print(std::ostream& stream, int tabs) {
 		<< Tabs(tabs)
 		<< "GetVarExpr: \n"
 		<< Tabs(tabs + 1)
-		<< "name: "
-		<< var
-		<< '\n';
+		<< "variable: ";
+	decl.print(stream, tabs + 2);
 }
 
 

@@ -46,7 +46,7 @@ inline bool test() {
 		outStream = &programOutput;
 		std::stringstream log;
 		auto start = std::chrono::high_resolution_clock::now();
-		std::optional<double> returnVal = run(stream, file, std::cout, true);
+		std::optional<double> returnVal = run(stream, file, std::cout);
 		auto end = std::chrono::high_resolution_clock::now();
 		std::cout << "\nReturn value = " << (returnVal.has_value() ? std::to_string(returnVal.value()) : "nil") 
 		          << ",\nCompleted in "

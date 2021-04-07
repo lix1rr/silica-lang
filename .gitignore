@@ -1,3 +1,6 @@
 silica/.vs
 silica/build
+silica/build_vs
+silica/out
 silica/CMakeSettings.json
+.gitignore

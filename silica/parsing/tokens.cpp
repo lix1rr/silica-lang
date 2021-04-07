@@ -174,8 +174,12 @@ std::string Silica::descibeToken(Token tok) {
 	case Token::greaterEquals: return "greater equals";
 	case Token::smaller: return "smaller";
 	case Token::smallerEquals: return "smaller equals";
-	case Token::open_bracket: return "open bracket";
-	case Token::closed_bracket: return "closed bracket";
+	case Token::openBracket: return "open bracket";
+	case Token::closedBracket: return "closed bracket";
+	case Token::openCurly: return "open curly bracket";
+	case Token::closedCurly: return "closed curly bracket";
+	case Token::openSquare: return "open square bracket";
+	case Token::closedSquare: return "closed square bracket";
 	case Token::keyword_func: return "keyword func";
 	case Token::keyword_extern: return "keyword extern";
 	case Token::keyword_return: return "keyword return";
@@ -184,4 +188,5 @@ std::string Silica::descibeToken(Token tok) {
 	default: unreachable();
 
 	}
+	return {};
 }

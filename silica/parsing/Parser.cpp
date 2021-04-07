@@ -32,60 +32,33 @@ void Parser::parse() {
 	}
 }
 //  Return is not nullptr
-std::unique_ptr<Expression> Parser::handleBlock() {
+std::unique_ptr<Block> Parser::handleBlock() {
 	Block block;
-	if (!next()) {
-		return std::make_unique<Block>(std::move(block));
-	}
-	tabs++;
-	int oldByte = byte + 1;
-
-	#define discardLine()												   \
-		while (token != Token::newline && token != Token::eof) {		   \
-			getToken(); 												   \
+	auto discardLine = [&]() {
+		while (token != Token::newline && token != Token::eof) {
+			getToken();
 		};
-
+	};
 	while (true) {
-
-		// Expects 'tabs' number of tabs
-		int tabsFound = 0;
-		while (current == '\t' && next()) {
-			tabsFound++;
-		}
-		if (current == '\n') {
-			if (!next()) {
-				return std::make_unique<Block>(std::move(block));
-			};
-			continue;
-		}
-		if (tabsFound > tabs) {
-			err("Too much indentation, expected " + std::to_string(tabs) + ", got " + std::to_string(tabs));
-		}
-		else if (tabsFound < tabs) {
-			tabs = tabsFound;
-			return std::make_unique<Block>(std::move(block));
-		}
 		getToken();
-
 		switch (token) {
 		case Token::number:
-			err("Unexpected number \'" + std::to_string(token_number) + "\' at statement beginning", oldByte);
+			err("Unexpected number \'" + std::to_string(token_number) + "\' at statement beginning");
 			discardLine();
 			break;
 		case Token::keyword_func:
 			//TODO: closure :0
-			err("Closures not implemented", oldByte);
+			err("Closures not implemented");
 			discardLine();
 			break;
 		case Token::keyword_extern:
-			err("The extern keyword is invalid here", oldByte);
-			note("To use extern, do it in a top level statment", oldByte);
+			err("The extern keyword is invalid here");
+			note("To use extern, do it in a top level statment");
 			discardLine();
 			break;
-		case Token::keyword_let: {
-			block.expressions.push_back(handleLet());
+		case Token::keyword_let:
+			handleLet();
 			break;
-		}
 		case Token::keyword_return:
 			getToken();
 			block.expressions.push_back(std::make_unique<Return>(expectExpression()));
@@ -95,6 +68,9 @@ std::unique_ptr<Expression> Parser::handleBlock() {
 		case Token::newline:
 			getToken();
 			continue;
+		case Token::closedCurly:
+			getToken();
+			return std::make_unique<Block>(std::move(block));
 		default: {
 			std::unique_ptr<Expression> expr = expectExpression();
 			if (expr == nullptr) {
@@ -117,19 +93,23 @@ std::unique_ptr<Expression> Parser::handleBlock() {
 			err("Expected newline after statement");
 			discardLine();
 		}
-		if (tabs < tabsFound) {
-			// A block inside this one had less indentation than this
-			return std::make_unique<Block>(std::move(block));
-		}
 	}
 }
-// When token is Token::open_bracket, advances token to after the ')'
+// When token is Token::openBracket, advances token to after the ')'
 std::unique_ptr<Expression> Parser::handleFuncCall(std::string name) {
+	// Todo: broke
+	return nullptr;
+	#if false
 	getToken();
 	std::unique_ptr<Expression> expr = expectExpression(true);
 	if (expr == nullptr) {
 		getToken();
-		return std::unique_ptr<CallFuncExpr>(new CallFuncExpr(name, {}));
+		auto it = ast.functions.find(name);
+		if (it == nullptr) {
+			err()
+		}
+		
+		return std::make_unique<CallFuncExpr>(0);
 	} 
 	
 	std::vector<std::unique_ptr<Expression>> args;
@@ -144,7 +124,7 @@ std::unique_ptr<Expression> Parser::handleFuncCall(std::string name) {
 			}
 			args.push_back(std::move(expr));
 		}
-		else if (token == Token::closed_bracket) {
+		else if (token == Token::closedBracket) {
 			getToken();
 			return std::make_unique<CallFuncExpr>(name, std::move(args));
 		}
@@ -154,53 +134,99 @@ std::unique_ptr<Expression> Parser::handleFuncCall(std::string name) {
 		}
 		
 	}
+	#endif
 }
+
 
 //                      V-Func name
 std::optional<std::pair<std::string, Extern>> Parser::parseFuncSignature() {
+	auto failed = [&]() {
+		// Go to the first '{'
+		do {
+			getToken();
+			if (token == Token::eof) {
+				return;
+			}
+		} while (token != Token::openCurly);
+		getToken();
+
+		int curlyDepth = 1;
+		while (true) {
+			if (token == Token::openCurly) {
+				curlyDepth += 1;
+			}
+			else if (token == Token::closedCurly) {
+				curlyDepth -= 1;
+			}
+			else if (token == Token::eof) {
+				return;
+			}
+			if (curlyDepth == 0) {
+				return;
+			}
+		}
+	};
 	getToken();
 	if (token != Token::identifier) {
 		err("Expected identifier in expected function declaration");
 		return std::nullopt;
 	}
-	std::string name = token_string;
+	std::string name = std::move(token_string);
 	getToken();
-	if (token != Token::open_bracket) {
-		err("Expected \'(\' after expected function declaration");
+	if (token != Token::openBracket) {
+		err("Expected a '(' after expected function declaration");
 		return std::nullopt;
 	}
 	Extern signature;
-	
+	signature.returnType = &Types::Void;
+	std::pair<std::string, const Type*> arg;
 	getToken();
-	if (token == Token::closed_bracket) {
-		return {{name, std::move(signature)}};
-	} else if (token == Token::comma) {
-		signature.args.push_back({ token_string, (const Type*) &Types::Float64});
-		getToken();
-		if (token != Token::identifier) {
-			err("Expected identifier after comma");
-			return std::nullopt;
-		}
+	if (token == Token::closedBracket) {
+		goto end;
 	}
-	else if (token != Token::identifier) {
-		err("Expected argument name in function declaration");
+begin:
+	if (token != Token::identifier) {
+		err("Expected an argument name in function");
+		failed();
 		return std::nullopt;
 	}
-	signature.args.push_back({ token_string, (const Type*) &Types::Float64 });
-	while (true) {
+	arg.first = std::move(token_string);
+	getToken();
+	if (token != Token::colon) {
+		err("Expected a ':' after the argument name");
+		failed();
+		return std::nullopt;
+	}
+	getToken();
+	arg.second = handleType(); 
+	if (arg.second == nullptr) {
+		err("Expected type");
+		failed();
+		return std::nullopt;
+	}
+	signature.args.emplace_back(std::move(arg));
+	getToken();
+
+	if (token == Token::comma) {
 		getToken();
-		if (token == Token::closed_bracket) {
-			return {{std::move(name), std::move(signature) }};
-		}
-		else if (token == Token::comma) {
-			getToken();
-			if (token != Token::identifier) {
-				err("Expected identifier after comma");
-				return std::nullopt;
-			}
-			signature.args.push_back({ token_string, (const Type*) &Types::Float64 });
+		goto begin;
+	}
+	if (token == Token::closedBracket) {
+		goto end;
+	} else {
+		err("Expected a comma or a closed bracket after argument");
+		failed();
+		return std::nullopt;
+	}
+end:
+	if (token == Token::arrow) {
+		getToken();
+		const Type* type = handleType();
+		if (type == nullptr) {
+			err("Expected type after '->'");
 		}
 	}
+	return {{ name, std::move(signature) }};
 }
 
 void Parser::handleExtern() {
@@ -231,14 +257,17 @@ std::unique_ptr<Expression> Parser::handleIdentifier() {
 		}
 		else {
 			getToken();
-			return std::make_unique<SetVarExpr>(name, std::move(result));
+
+			//TODO: fix
+			//return std::make_unique<SetVarExpr>(name, std::move(result));
 		}
 	}
-	else if (token == Token::open_bracket) {
+	else if (token == Token::openBracket) {
 		return handleFuncCall(name);
 	}
 	else {
-		return std::make_unique<GetVarExpr>(name);
+		// TODO:fix
+		//return std::make_unique<GetVarExpr>(name);
 	}
 }
 
@@ -258,14 +287,44 @@ void Parser::handleFuncDecl() {
 		return;
 	}
 	getToken();
-	Function f { funcDecl->second.args, funcDecl->second.returnType, expectExpression() };
+	if (token != Token::openCurly) {
+		err("Expected an open curly bracket after function declaration");
+		return;
+	}
+	Function f { funcDecl->second.args, funcDecl->second.returnType, handleBlock() };
 	// the function that was moved into the map
 	Function& func = ast.functions.emplace(funcDecl->first, std::move(f)).first->second;
-	if (func.result == nullptr) {
-		err("Expected an expression after function declaration");
-	}
 	//ast.functions.emplace(funcDecl)??;
 	
+	
+}
+
+const Type* Parser::handleType() {
+	if (token != Token::identifier) {
+		err("Expected an identifier to name a type");
+		return nullptr;
+	}
+	
+	const Type* type = nullptr;
+
+	auto it1 = std::find_if(Types::all.begin(), Types::all.end(), [&](auto& elem) {
+		return elem->name == token_string;
+		});
+	if (it1 != Types::all.end()) {
+		type = *it1;
+	}
+
+	auto it2 = std::find_if(types.begin(), types.end(), [&](auto& elem) {
+		return elem->name == token_string;
+	});
+	if (it2 != types.end()) {
+		type = it2->get();
+	}
+
+	if (type == nullptr) {
+		err("Identifier " + token_string + " does not name a type");
+	}
+	return type;
 	
 }
 
@@ -284,10 +343,10 @@ std::unique_ptr<Expression> Parser::parseSingleExpr() {
 	}
 
 	switch (token) {
-	case Token::open_bracket: {
+	case Token::openBracket: {
 		getToken();
 		std::unique_ptr<Expression> expr = expectExpression();
-		if (token == Token::closed_bracket) {
+		if (token == Token::closedBracket) {
 			if (expr == nullptr) {
 				err("Empty brackets in expression");
 				return nullptr;
@@ -300,19 +359,59 @@ std::unique_ptr<Expression> Parser::parseSingleExpr() {
 	case Token::colon:
 		// Handle block
 		return handleBlock();
-		
 		break;
+	case Token::keyword_if: {
+		getToken();
+		// condition
+		std::unique_ptr<Expression> condition = expectExpression();
+		if (condition == nullptr) {
+			err("Expected an expression after if statement");
+			return nullptr;
+		}
+		if (token != Token::openCurly) {
+			err("Expected a block '{' after the condition of an if statement");
+			return nullptr;
+		}
+		IfExpr ifExpr { std::move(condition), handleBlock(), nullptr };
+		std::unique_ptr<Expression>* insertPoint = &ifExpr.ifFalse;
+		while (token == Token::keyword_elif) {
+			condition = expectExpression();
+			if (condition == nullptr) {
+				err("Expected an expression after elif");
+				return nullptr;
+			}
+			if (token != Token::openCurly) {
+				err("Expected a block '{' after the condition of an elif statement");
+				return nullptr;
+			}
+			std::unique_ptr<IfExpr> newIfExpr = std::make_unique<IfExpr>(std::move(condition), handleBlock(), nullptr);
+			std::unique_ptr<Expression>* newInsertPoint = &newIfExpr->ifFalse;
+			*insertPoint = std::move(newIfExpr);
+			insertPoint = newInsertPoint;
+		}
+		if (token == Token::keyword_else) {
+			getToken();
+			if (token != Token::openCurly) {
+				err("Expected a block '{' after an else statement");
+				return nullptr;
+			}
+			*insertPoint = handleBlock();
+		}
+		return std::make_unique<IfExpr>(std::move(ifExpr));
+	}
 	case Token::number:
 		getToken();
 		return std::make_unique<NumLitExpr>(token_number);
 	case Token::identifier: {
 		std::string identifier = std::move(token_string);
 		getToken();
-		if (token == Token::open_bracket) {
+		if (token == Token::openBracket) {
 			return handleFuncCall(std::move(identifier));
 		}
 		else {
-			return std::make_unique<GetVarExpr>(std::move(identifier));
+			// Todo:fix
+			// return std::make_unique<GetVarExpr>(std::move(identifier));
+			
 		}
 		break;
 	}
@@ -358,22 +457,30 @@ std::unique_ptr<Expression> Parser::parseRhs(int precedence, std::unique_ptr<Exp
 	}
 }
 
-std::unique_ptr<Let> Parser::handleLet() {
-	expect(Token::identifier, "Expected identifier after let statement");
-	std::string name = token_string;
+DeclareVar* Parser::handleLet() {
 	getToken();
-	if (token == Token::identifier) {
-		myAssert(false, "Types not implemented yet, default is double");
+	if (token != Token::identifier) {
+		err("Expected identifier after let statement");
+		return nullptr;
 	}
-	else if (token == Token::asign) {
+	std::string name = token_string;
+	const Type* type = nullptr;
+	getToken();
+	if (token == Token::colon) {
 		getToken();
-		std::unique_ptr<Expression> expr = expectExpression();
-		if (expr == nullptr) {
-			err("Expected expression after let");
-			return nullptr;
-		}
-		return std::make_unique<Let>(name, std::move(expr));
+		type = handleType();
 	}
-	err("Unexpected token after let");
-	return nullptr;
+	if (token != Token::asign) {
+		err("Unexpected token after let");
+		return nullptr;
+	}
+	getToken();
+	std::unique_ptr<Expression> expr = expectExpression();
+	if (expr == nullptr) {
+		err("Expected expression after let");
+		return nullptr;
+	}
+	ast.currentBlock->variables.emplace_back(name, expr->type, false);
+	ast.currentBlock->expressions.emplace_back(std::make_unique<SetVarExpr>(ast.currentBlock->variables.back(), std::move(expr)));
+	return  &ast.currentBlock->variables.back();
 }

@@ -1,0 +1,8 @@
+use pow(x,y)
+
+func if_statements(a) {
+	let a = pow(2, 3)
+	let b = a
+	let c = b
+	let d = a
+}

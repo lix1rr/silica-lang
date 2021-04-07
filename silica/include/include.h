@@ -5,7 +5,7 @@
 
 namespace Silica {
 	constexpr std::string_view target = TARGET_OS "-" TARGET_PROCESSOR;
-	std::optional<double> run(std::istream& stream, std::string name, std::ostream& outStream, bool emitIR);
+	std::optional<double> run(std::istream& stream, std::string name, std::ostream& outStream);
 };
 
 namespace Options {
