@@ -31,9 +31,20 @@ void Parser::parse() {
 		}
 	}
 }
+template<typename T>
+struct Defer {
+	T func;
+	~Defer() { func(); };
+};
+template<typename DT>
+static Defer<DT> defer_fn(DT func) { return Defer<DT>{func}; };
+#define defer(lambda) auto _deferred_##__LINE__ = defer_fn(lambda);
+
 //  Return is not nullptr
 std::unique_ptr<Block> Parser::handleBlock() {
 	Block block;
+	ast.currentBlock = &block;
+	defer([&] { ast.currentBlock = nullptr; });
 	auto discardLine = [&]() {
 		while (token != Token::newline && token != Token::eof) {
 			getToken();
@@ -97,49 +108,42 @@ std::unique_ptr<Block> Parser::handleBlock() {
 }
 // When token is Token::openBracket, advances token to after the ')'
 std::unique_ptr<Expression> Parser::handleFuncCall(std::string name) {
-	// Todo: broke
-	return nullptr;
-	#if false
-	getToken();
-	std::unique_ptr<Expression> expr = expectExpression(true);
-	if (expr == nullptr) {
-		getToken();
-		auto it = ast.functions.find(name);
-		if (it == nullptr) {
-			err()
+	auto result = parseArgList<std::unique_ptr<Expression>>("function", "expression", [&] { expectExpression(); });
+	if (!result.has_value()) {
+		return nullptr;
+	};
+	// Find the function
+	auto it = std::find_if(ast.functions.begin(), ast.functions.end(), [&](Function& f) {
+		if (f.name != name) {
+			return false;
 		}
-		
-		return std::make_unique<CallFuncExpr>(0);
-	} 
-	
-	std::vector<std::unique_ptr<Expression>> args;
-	args.push_back(std::move(expr));
-	while (true) {
-		if (token == Token::comma) {
-			getToken();
-			std::unique_ptr<Expression> expr = expectExpression(true);
-			if (expr == nullptr) {
-				err("Invalid expression after comma");
-				return nullptr;
+		if (f.args.size() != result->size()) {
+			return false;
+		}
+		for (size_t i = 0; i < f.args.size(); i++) {
+			if (f.args[i].first != (*result)[i].first) {
+				return false;
 			}
-			args.push_back(std::move(expr));
 		}
-		else if (token == Token::closedBracket) {
-			getToken();
-			return std::make_unique<CallFuncExpr>(name, std::move(args));
-		}
-		else {
-			err("Unexpected token " + std::string(1, current) + " in function call");
-			return nullptr;
-		}
-		
+		return true;
+	});
+	if (it == ast.functions.end()) {
+		err("The function with this signature could not be found");
+		return nullptr;
+	} else {
+		std::vector<std::unique_ptr<Expression>> exprList;
+		for (auto& pair : *result) {
+			exprList.emplace_back(std::move(pair.first));
+
+		};
+		ast.currentBlock->expressions.emplace_back(std::make_unique<CallFuncExpr>( *it, std::move(exprList) ));
 	}
-	#endif
 }
 
 
 //                      V-Func name
 std::optional<std::pair<std::string, Extern>> Parser::parseFuncSignature() {
+	/*
 	auto failed = [&]() {
 		// Go to the first '{'
 		do {
@@ -164,6 +168,7 @@ std::optional<std::pair<std::string, Extern>> Parser::parseFuncSignature() {
 			if (curlyDepth == 0) {
 				return;
 			}
+			getToken();
 		}
 	};
 	getToken();
@@ -227,6 +232,64 @@ end:
 		}
 	}
 	return {{ name, std::move(signature) }};
+	*/
+	getToken();
+	if (token != Token::identifier) {
+		err("Expected identifier in expected function declaration");
+		return std::nullopt;
+	}
+	std::string name = std::move(token_string);
+	getToken();
+	if (token != Token::openBracket) {
+		err("Expected a '(' after expected function declaration");
+		return std::nullopt;
+	}
+
+	auto optResult = parseArgList<const Type*>("function signature", "type", [&] { return handleType(); } );
+	if (!optResult.has_value()) {
+		// Go to the first '{'
+		do {
+			getToken();
+			if (token == Token::eof) {
+				return std::nullopt;
+			}
+		} while (token != Token::openCurly);
+		getToken();
+
+		int curlyDepth = 1;
+		while (true) {
+			if (token == Token::openCurly) {
+				curlyDepth += 1;
+			}
+			else if (token == Token::closedCurly) {
+				curlyDepth -= 1;
+			}
+			else if (token == Token::eof) {
+				return std::nullopt;
+			}
+			if (curlyDepth == 0) {
+				return std::nullopt;
+			}
+			getToken();
+		}
+		return std::nullopt;
+	}
+	auto result = *optResult;
+	Extern signature;
+	signature.args = std::move(result);
+
+	if (token == Token::arrow) {
+		getToken();
+		signature.returnType = handleType();
+		if (signature.returnType == nullptr) {
+			err("Expected type after '->'");
+		}
+	}
+	else {
+		signature.returnType = &Types::Void;
+	}
+
+	return { { name, std::move(signature) } };
 }
 
 void Parser::handleExtern() {
@@ -282,7 +345,7 @@ void Parser::handleFuncDecl() {
 		return;
 	}
 
-	if (ast.functions.find(funcDecl->first) != ast.functions.end()) {
+	if (std::find(ast.functions.begin(), ast.functions.end(), funcDecl->first) != ast.functions.end()) {
 		err("Cannot create function " + funcDecl->first + ", as it was already declared");
 		return;
 	}
@@ -359,7 +422,6 @@ std::unique_ptr<Expression> Parser::parseSingleExpr() {
 	case Token::colon:
 		// Handle block
 		return handleBlock();
-		break;
 	case Token::keyword_if: {
 		getToken();
 		// condition
@@ -409,14 +471,30 @@ std::unique_ptr<Expression> Parser::parseSingleExpr() {
 			return handleFuncCall(std::move(identifier));
 		}
 		else {
-			// Todo:fix
-			// return std::make_unique<GetVarExpr>(std::move(identifier));
-			
+			// variable name
+			Block* it = ast.currentBlock;
+			while (it != nullptr) {
+				auto result = std::find_if(
+					ast.currentBlock->variables.begin(), ast.currentBlock->variables.end(),
+					[&](DeclareVar decl) {
+						return decl.name == identifier;
+					}
+				);
+
+				if (result != ast.currentBlock->variables.end()) {
+					// There exists a variable called 'identifier' in the Block '*it'
+					return std::make_unique<GetVarExpr>(*result);
+				}
+				else {
+					// Variable not found, go to the parent block
+					it = it->parent;
+				}
+			};
+			err("Could not find variable name " + std::move(identifier));
+			return nullptr;
 		}
 		break;
 	}
-		
-
 	default:
 		// When it reaches the end of an expression (this is not an error)
 		return nullptr;

@@ -44,7 +44,7 @@ void Parser::nextToken(bool inclNewline) {
 		}
 
 		// Skip white space
-		if (current == ' ') {
+		if (current == ' ' || current == '\t') {
 			next();
 			continue;
 		}
@@ -60,12 +60,6 @@ void Parser::nextToken(bool inclNewline) {
 				std::cout << "ignored (token newline)\n";
 				next();
 			}
-			continue;
-		}
-
-		if (current == '\t') {
-			err("Unexpected tab");
-			next();
 			continue;
 		}
 

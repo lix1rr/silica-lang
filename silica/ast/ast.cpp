@@ -9,8 +9,8 @@ namespace Silica {
 void Ast::print(std::ostream& out) {
 	out << "Functions:\n";
 	for (auto& i : functions) {
-		out << i.first << ":\n";
-		i.second.print(out, 1);
+		out << i.name << ":\n";
+		i.print(out, 1);
 	}
 
 	out << "Externs:\n";
@@ -116,7 +116,7 @@ void CallFuncExpr::print(std::ostream& stream, int tabs) {
 		<< Tabs(tabs)
 		<< "CallFuncExpr: \n"
 		<< Tabs(tabs + 1)
-		<< "name: " << name << '\n';
+		<< "name: " << func.name << '\n';
 	for (size_t i = 0; i < args.size(); i++) {
 		stream
 			<< Tabs(tabs + 1)

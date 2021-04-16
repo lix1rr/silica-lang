@@ -100,8 +100,7 @@ struct Function: public Node {
 	std::vector<std::pair<std::string, const Type*>> args;
 	const Type* returnType;
 	std::unique_ptr<Expression> result;
-	Function(std::vector<std::pair<std::string, const Type*>> args, const Type* returnType, std::unique_ptr<Expression> result) :
-		args(std::move(args)), returnType(returnType), result(std::move(result)) {};
+	std::string name;
 	void print(std::ostream& stream, int tabs) override;
 };
 
@@ -123,7 +122,7 @@ struct Ast {
 	int errorCount = 0;
 	std::string errors;
 	std::unordered_map<std::string, Extern> externs;
-	std::unordered_map<std::string, Function> functions;
+	std::vector<Function> functions;
 	Block* currentBlock = nullptr;
 	int currentStackDepth = 0;
 	xed_reg_enum_t currentReg = (xed_reg_enum_t) (int(XED_REG_RAX) - 1);
@@ -208,11 +207,9 @@ struct SetVarExpr : public Expression {
 };
 
 struct CallFuncExpr : public Expression {
-	std::string name;
+	Function& func;
 	std::vector<std::unique_ptr<Expression>> args;
-	
-	CallFuncExpr(Function& func, std::vector<std::unique_ptr<Expression>> args):
-		Expression(ValueType::temp, func.returnType, true), name(name), args(std::move(args)){};
+	CallFuncExpr(Function& func, std::vector<std::unique_ptr<Expression>> args) : func(func), args(std::move(args)) {};
 	void print(std::ostream& stream, int tabs) override;
 };
 

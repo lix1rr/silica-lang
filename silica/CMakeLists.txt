@@ -4,7 +4,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_CXX_STANDARD 17)
 
 set(CMAKE_CXX_STANDARD_REQUIRED True)
-add_executable(SilicaJIT  "ast/ast.cpp"  "prism library/prism-lib.cpp" "parsing/Parser.cpp" "parsing/tokens.cpp"  "main.cpp"  "ast/types.h" "compiling/compiler.h"     "compiling/host.h" "compiling/host.cpp" "ast/types.cpp" "compiling/backend.cpp")
+add_executable(SilicaJIT  "ast/ast.cpp" "parsing/Parser.cpp" "parsing/tokens.cpp"  "main.cpp"  "ast/types.h" "compiling/compiler.h"     "compiling/host.h" "compiling/host.cpp" "ast/types.cpp" "compiling/backend.cpp")
 
 message("Found xed kit at ${XED_KIT_DIR}")
 target_include_directories(SilicaJIT PRIVATE ${XED_KIT_DIR}/include)

@@ -1,6 +1,6 @@
-use pow(x,y)
+use pow(x: Float64, y: Float64)
 
-func if_statements(a) {
+func if_statements(p: Int32) {
 	let a = pow(2, 3)
 	let b = a
 	let c = b

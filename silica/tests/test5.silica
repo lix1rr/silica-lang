@@ -4,4 +4,4 @@ func dog(x: Int64) {}
 
 func shablam(x :UInt8, y:Int8, z: Int64, t: Int32) {}
 
-func blocks(x: Int64, y: UInt32, x:Cpd) {}
+func blocks(x: Int64, y: UInt32, x: Int32) {}

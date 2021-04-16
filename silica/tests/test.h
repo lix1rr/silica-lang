@@ -1,6 +1,5 @@
 #pragma once
 #include "include.h"
-#include "prism library/prism-lib.h"
 #include <iostream>
 #include <fstream>
 #include <chrono>
@@ -16,8 +15,8 @@
 #endif
 
 namespace Silica {
-constexpr int startTest = 5;
-constexpr int endTest = 5;
+constexpr int startTest = 6;
+constexpr int endTest = 6;
 
 
 template <typename T>
@@ -42,9 +41,6 @@ inline bool test() {
 		
 		// Run test
 		std::cout << "Test " << i << "\n";
-		std::stringstream programOutput;
-		outStream = &programOutput;
-		std::stringstream log;
 		auto start = std::chrono::high_resolution_clock::now();
 		std::optional<double> returnVal = run(stream, file, std::cout);
 		auto end = std::chrono::high_resolution_clock::now();

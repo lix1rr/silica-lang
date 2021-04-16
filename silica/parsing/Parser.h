@@ -94,6 +94,9 @@ namespace Silica {
 		}
 
 		const Type* handleType();
+		template<typename ArgType, typename ArgGetter>
+		std::optional<std::vector<std::pair<std::string, ArgType>>> Parser::parseArgList(
+			std::string_view listDesc, std::string_view argDesc, ArgGetter argGetter);
 		std::unique_ptr<Expression> parseSingleExpr();
 		std::unique_ptr<Expression> handleFuncCall(std::string name);
 		std::optional<std::pair<std::string, Extern>> parseFuncSignature();
@@ -108,5 +111,53 @@ namespace Silica {
 		void parse();
 	};
 	#define expect(expectedToken, msg) getToken();if (token != expectedToken) {err(msg); return nullptr;}
+
+
+
+	template<typename ArgType, typename ArgGetter>
+	std::optional<std::vector<std::pair<std::string, ArgType>>> Parser::parseArgList(
+		std::string_view listDesc, std::string_view argDesc, ArgGetter argGetter)
+	{
+		std::vector<std::pair<std::string, ArgType>> result;
+		std::pair<std::string, ArgType> arg;
+		getToken();
+		if (token == Token::closedBracket) {
+			goto end;
+		}
+	begin:
+		if (token != Token::identifier) {
+			err(std::string("Expected an argument name in ") + listDesc);
+			return std::nullopt;
+		}
+		arg.first = std::move(token_string);
+		getToken();
+		if (token != Token::colon) {
+			err("Expected a ':' after the argument name");
+			return std::nullopt;
+		}
+		getToken();
+		arg.second = argGetter();
+		if (arg.second == nullptr) {
+			err(std::string("Expected ") + argDesc);
+			return std::nullopt;
+		}
+		signature.args.emplace_back(std::move(arg));
+		getToken();
+
+		if (token == Token::comma) {
+			getToken();
+			goto begin;
+		}
+		if (token == Token::closedBracket) {
+			goto end;
+		}
+		else {
+			err(std::string("Expected a comma or a closed bracket after argument"));
+			failed();
+			return std::nullopt;
+		}
+	end:
+		return { result };
+	}
 }
 
